@@ -326,7 +326,7 @@ function WatchReadPlayApp() {
             <p>
               {authMode === "login"
                 ? "Войди через Google, чтобы открыть свой список."
-                : "Создай аккаунт через Google. Backend сам добавит тебя в базу."}
+                : "Создай аккаунт через Google чтобы начать собирать свой список."}
             </p>
 
             <GoogleLogin
