@@ -440,7 +440,7 @@ function WatchReadPlayApp() {
                     setSelectedCatalogItemId("");
                   }
                 }}
-                placeholder="Игра, книга, фильм или сериал которого нету "
+                placeholder="Игра, книга, фильм или сериал которого нету в списке"
               />
             </label>
           </div>
@@ -465,7 +465,7 @@ function WatchReadPlayApp() {
               <input
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                placeholder="Например, пройти зимой"
+                placeholder="Например, завершу зимой"
               />
             </label>
           </div>
