@@ -440,7 +440,7 @@ function WatchReadPlayApp() {
                     setSelectedCatalogItemId("");
                   }
                 }}
-                placeholder="Например, Hollow Knight"
+                placeholder="Игра, книга, фильм или сериал которого нету "
               />
             </label>
           </div>
