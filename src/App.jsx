@@ -40,7 +40,7 @@ const categories = [
     customModeDescription: "Для книги, которой пока нет в каталоге.",
     catalogLabel: "Книга из каталога",
     customLabel: "Название книги",
-    customPlaceholder: "Например, правила стандоффа второй класс",
+    customPlaceholder: "Например, Project Hail Mary",
     notePlaceholder: "Например, прочитать в отпуске",
   },
   {
@@ -52,8 +52,7 @@ const categories = [
     introText:
       "Добавь аниме в свой список: сериал, полнометражку или OVA.",
     catalogModeTitle: "Выбрать аниме из каталога",
-    catalogModeDescription:
-      "Лучший вариант, если тайтл уже есть в базе.",
+    catalogModeDescription: "Лучший вариант, если тайтл уже есть в базе.",
     customModeTitle: "Добавить своё аниме",
     customModeDescription: "Для аниме, которого пока нет в каталоге.",
     catalogLabel: "Аниме из каталога",
@@ -161,6 +160,11 @@ function WatchReadPlayApp() {
   const [usernameDraft, setUsernameDraft] = useState("");
   const [isSavingUsername, setIsSavingUsername] = useState(false);
 
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [isPasswordAuthLoading, setIsPasswordAuthLoading] = useState(false);
+
   const [addMode, setAddMode] = useState("catalog");
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState("");
   const [customTitle, setCustomTitle] = useState("");
@@ -196,6 +200,19 @@ function WatchReadPlayApp() {
       completed: selectedItems.filter((item) => item.status === "completed").length,
       dropped: selectedItems.filter((item) => item.status === "dropped").length,
     };
+  }, [selectedItems]);
+
+  const averageRating = useMemo(() => {
+    const ratedItems = selectedItems.filter(
+      (item) => item.status === "completed" && item.rating
+    );
+
+    if (ratedItems.length === 0) {
+      return null;
+    }
+
+    const total = ratedItems.reduce((sum, item) => sum + item.rating, 0);
+    return (total / ratedItems.length).toFixed(1);
   }, [selectedItems]);
 
   const categoryCounts = useMemo(() => {
@@ -357,6 +374,73 @@ function WatchReadPlayApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth?.access_token, currentUser?.username]);
 
+  async function handlePasswordAuth(event) {
+    event.preventDefault();
+
+    const username = normalizeUsernameForInput(authUsername);
+    const password = authPassword;
+
+    if (!username) {
+      showMessage("error", "Введи username");
+      return;
+    }
+
+    if (!password) {
+      showMessage("error", "Введи пароль");
+      return;
+    }
+
+    try {
+      setIsPasswordAuthLoading(true);
+      setMessage(null);
+
+      const path = authMode === "login" ? "/auth/login" : "/auth/register";
+
+      const body =
+        authMode === "login"
+          ? {
+              username,
+              password,
+            }
+          : {
+              username,
+              password,
+              name: authName.trim() || null,
+            };
+
+      const response = await fetch(`${API_URL}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(getApiErrorMessage(data));
+      }
+
+      saveAuth({
+        access_token: data.access_token,
+        user: data.user,
+      });
+
+      setUsernameDraft(data.user.username || "");
+      setAuthPassword("");
+
+      showMessage(
+        "success",
+        authMode === "login" ? "Вход выполнен" : "Аккаунт создан"
+      );
+    } catch (error) {
+      showMessage("error", error.message);
+    } finally {
+      setIsPasswordAuthLoading(false);
+    }
+  }
+
   async function handleGoogleSuccess(credentialResponse) {
     try {
       setMessage(null);
@@ -392,7 +476,7 @@ function WatchReadPlayApp() {
         setUsernameDraft(data.user.username);
       }
 
-      showMessage("success", "Вход выполнен");
+      showMessage("success", "Вход через Google выполнен");
     } catch (error) {
       showMessage("error", error.message);
     }
@@ -400,6 +484,48 @@ function WatchReadPlayApp() {
 
   function handleGoogleError() {
     showMessage("error", "Google login не сработал");
+  }
+
+  async function handleLinkGoogleSuccess(credentialResponse) {
+    try {
+      setMessage(null);
+
+      if (!credentialResponse.credential) {
+        throw new Error("Google не вернул credential");
+      }
+
+      const response = await fetch(`${API_URL}/auth/google/link`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.access_token}`,
+        },
+        body: JSON.stringify({
+          credential: credentialResponse.credential,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(getApiErrorMessage(data));
+      }
+
+      saveAuth({
+        ...auth,
+        user: data,
+      });
+
+      setUsernameDraft(data.username || "");
+
+      showMessage("success", "Google аккаунт привязан");
+    } catch (error) {
+      showMessage("error", error.message);
+    }
+  }
+
+  function handleLinkGoogleError() {
+    showMessage("error", "Не получилось привязать Google");
   }
 
   async function handleSaveUsername(event) {
@@ -489,6 +615,21 @@ function WatchReadPlayApp() {
       await apiRequest(`/items/${itemId}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
+      });
+
+      await loadDashboard();
+    } catch (error) {
+      showMessage("error", error.message);
+    }
+  }
+
+  async function handleChangeRating(itemId, ratingValue) {
+    const rating = ratingValue ? Number(ratingValue) : null;
+
+    try {
+      await apiRequest(`/items/${itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ rating }),
       });
 
       await loadDashboard();
@@ -640,8 +781,8 @@ function WatchReadPlayApp() {
           <h1>WatchReadPlay</h1>
 
           <p>
-            Твой личный backlog для игр, книг и аниме. Войди через
-            Google, чтобы сохранять списки и прогресс.
+            Твой личный backlog для игр, книг и аниме. Войди удобным способом,
+            чтобы сохранять списки, друзей и оценки.
           </p>
 
           <div className="auth-tabs">
@@ -662,11 +803,65 @@ function WatchReadPlayApp() {
             </button>
           </div>
 
+          <form className="password-auth-form" onSubmit={handlePasswordAuth}>
+            <label className="field">
+              <span>Username</span>
+              <input
+                value={authUsername}
+                onChange={(event) => setAuthUsername(event.target.value)}
+                placeholder="например, user228"
+                autoComplete="username"
+              />
+            </label>
+
+            {authMode === "signup" && (
+              <label className="field">
+                <span>Имя</span>
+                <input
+                  value={authName}
+                  onChange={(event) => setAuthName(event.target.value)}
+                  placeholder="Как тебя показывать друзьям"
+                  autoComplete="name"
+                />
+              </label>
+            )}
+
+            <label className="field">
+              <span>Пароль</span>
+              <input
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+                placeholder="минимум 6 символов"
+                type="password"
+                autoComplete={
+                  authMode === "login" ? "current-password" : "new-password"
+                }
+              />
+            </label>
+
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={isPasswordAuthLoading}
+            >
+              {isPasswordAuthLoading
+                ? "Подождите..."
+                : authMode === "login"
+                  ? "Войти по username"
+                  : "Создать аккаунт"}
+            </button>
+          </form>
+
+          <div className="auth-divider">
+            <span></span>
+            <p>или</p>
+            <span></span>
+          </div>
+
           <div className="google-box">
             <p>
-              {authMode === "login"
-                ? "Войди через Google, чтобы открыть свой список."
-                : "Создай аккаунт через Google. После входа нужно будет выбрать username."}
+              Можно войти через Google. Если username ещё нет, приложение попросит
+              придумать его после входа.
             </p>
 
             <GoogleLogin
@@ -748,19 +943,21 @@ function WatchReadPlayApp() {
           <p className="eyebrow">WATCHREADPLAY</p>
 
           <div className="profile-title">
-            {currentUser?.picture && (
+            {currentUser?.picture ? (
               <img
                 className="user-avatar"
                 src={currentUser.picture}
                 alt=""
                 referrerPolicy="no-referrer"
               />
+            ) : (
+              <div className="user-avatar avatar-placeholder">👤</div>
             )}
 
             <div>
               <h1>Мой backlog</h1>
               <p>
-                Привет, {currentUser?.name || currentUser?.email}. Твой username:{" "}
+                Привет, {currentUser?.name || currentUser?.username}. Твой username:{" "}
                 <strong>@{currentUser?.username}</strong>
               </p>
             </div>
@@ -923,6 +1120,13 @@ function WatchReadPlayApp() {
             <StatCard title="Заброшено" value={stats.dropped} />
           </section>
 
+          {averageRating && (
+            <section className="average-rating-panel">
+              <strong>Средняя оценка завершённого:</strong>
+              <span>{averageRating}/10</span>
+            </section>
+          )}
+
           <section className="status-grid">
             {statuses.map((status) => (
               <div className="status-column" key={status.id}>
@@ -936,6 +1140,7 @@ function WatchReadPlayApp() {
                         key={item.id}
                         item={item}
                         onChangeStatus={handleChangeStatus}
+                        onChangeRating={handleChangeRating}
                         onDelete={handleDeleteItem}
                       />
                     ))}
@@ -974,6 +1179,38 @@ function WatchReadPlayApp() {
                   {isSavingUsername ? "Сохраняем..." : "Обновить username"}
                 </button>
               </form>
+
+              <div className="google-link-card">
+                <div>
+                  <p className="eyebrow">Google</p>
+
+                  {currentUser?.email ? (
+                    <>
+                      <h3>Google привязан</h3>
+                      <p>{currentUser.email}</p>
+                    </>
+                  ) : (
+                    <>
+                      <h3>Привязать Google</h3>
+                      <p>
+                        После привязки ты сможешь входить в этот же аккаунт через
+                        Google.
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {!currentUser?.email && (
+                  <GoogleLogin
+                    onSuccess={handleLinkGoogleSuccess}
+                    onError={handleLinkGoogleError}
+                    theme="filled_black"
+                    size="large"
+                    text="continue_with"
+                    shape="pill"
+                  />
+                )}
+              </div>
             </section>
 
             <section className="panel">
@@ -1123,8 +1360,8 @@ function WatchReadPlayApp() {
                 <div className="empty-profile">
                   <h2>Профиль друга</h2>
                   <p>
-                    Нажми “Профиль” у друга, чтобы посмотреть его игры, фильмы,
-                    сериалы и аниме.
+                    Нажми “Профиль” у друга, чтобы посмотреть его игры, книги и
+                    аниме.
                   </p>
                 </div>
               ) : (
@@ -1180,6 +1417,12 @@ function WatchReadPlayApp() {
                           {statusLabels[item.status]}
                         </p>
 
+                        {item.rating && (
+                          <span className="friend-rating">
+                            Оценка: {item.rating}/10
+                          </span>
+                        )}
+
                         {item.notes && <span>{item.notes}</span>}
                       </div>
                     ))}
@@ -1213,7 +1456,9 @@ function StatCard({ title, value }) {
   );
 }
 
-function ItemCard({ item, onChangeStatus, onDelete }) {
+function ItemCard({ item, onChangeStatus, onChangeRating, onDelete }) {
+  const isCompleted = item.status === "completed";
+
   return (
     <article className="item-card">
       <div>
@@ -1223,6 +1468,31 @@ function ItemCard({ item, onChangeStatus, onDelete }) {
 
         <span className="status-pill">{statusLabels[item.status]}</span>
       </div>
+
+      {isCompleted ? (
+        <label className="rating-control">
+          <span>Оценка после завершения</span>
+
+          <select
+            value={item.rating || ""}
+            onChange={(event) => onChangeRating(item.id, event.target.value)}
+          >
+            <option value="">Без оценки</option>
+            <option value="1">1 / 10</option>
+            <option value="2">2 / 10</option>
+            <option value="3">3 / 10</option>
+            <option value="4">4 / 10</option>
+            <option value="5">5 / 10</option>
+            <option value="6">6 / 10</option>
+            <option value="7">7 / 10</option>
+            <option value="8">8 / 10</option>
+            <option value="9">9 / 10</option>
+            <option value="10">10 / 10</option>
+          </select>
+        </label>
+      ) : (
+        <p className="rating-disabled">Оценка доступна после завершения</p>
+      )}
 
       <div className="item-actions">
         {statuses.map((status) => (

@@ -474,3 +474,126 @@ select:focus {
     flex-direction: column;
   }
 }
+
+
+.password-auth-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.password-auth-form .primary-button {
+  width: 100%;
+}
+
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  color: var(--muted);
+}
+
+.auth-divider span {
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-divider p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.avatar-placeholder {
+  display: grid;
+  place-items: center;
+  background: rgba(229, 9, 20, 0.18);
+}
+
+.rating-control {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(229, 9, 20, 0.24);
+  border-radius: 16px;
+  background: rgba(229, 9, 20, 0.07);
+  padding: 12px;
+}
+
+.rating-control span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.rating-control select {
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.rating-disabled {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  padding: 12px;
+  font-size: 13px;
+}
+
+.average-rating-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(229, 9, 20, 0.45);
+  border-radius: 20px;
+  background: rgba(229, 9, 20, 0.08);
+  margin: 0 0 22px;
+  padding: 18px 20px;
+}
+
+.average-rating-panel strong {
+  color: var(--muted);
+}
+
+.average-rating-panel span {
+  color: white;
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.friend-rating {
+  display: block;
+  width: fit-content;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: rgba(229, 9, 20, 0.17);
+  color: #ffb0b5;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.google-link-card {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  border: 1px solid rgba(229, 9, 20, 0.28);
+  border-radius: 20px;
+  background: rgba(229, 9, 20, 0.08);
+  padding: 18px;
+}
+
+.google-link-card h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.google-link-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
